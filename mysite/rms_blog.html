@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+
+  <head>
+
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <meta name="description" content="For over 20 years RMS ...">
+    <meta name="author" content="RMS FInance">
+    <meta name="keywords" content="BI solution company, HFM implementation, Essbase implementation, atlanta BI solutions, atlanta BI process design, custom software development company" />
+    <meta name="msvalidate_01" content="TBD Bing verification">
+    <meta name="google-site-verification" content="TBD Google verification">
+
+
+
+    <title>Agency/ RMS - Start Bootstrap Theme</title>
+
+    <!-- Bootstrap core CSS -->
+    <!-- <link href="vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet"> -->
+    <link href="vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- Custom fonts for this template -->
+    <link href="vendor/font-awesome/css/font-awesome.min.css" rel="stylesheet" type="text/css">
+    <link href="https://fonts.googleapis.com/css?family=Montserrat:400,700" rel="stylesheet" type="text/css">
+    <link href='https://fonts.googleapis.com/css?family=Kaushan+Script' rel='stylesheet' type='text/css'>
+    <link href='https://fonts.googleapis.com/css?family=Droid+Serif:400,700,400italic,700italic' rel='stylesheet' type='text/css'>
+    <link href='https://fonts.googleapis.com/css?family=Roboto+Slab:400,100,300,700' rel='stylesheet' type='text/css'>
+
+    <!-- Custom styles for this template -->
+    <!-- Custom styles for this template Reames changed on Mon, Apr 16-->
+    <!-- <link href="css/agency.min.css" rel="stylesheet"> -->
+    <link href="css/my_agency.css" rel="stylesheet">
+
+  </head>
+
+  <body id="page-top">
+
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark fixed-top" id="mainNav">
+      <div class="container">
+        <a class="navbar-brand js-scroll-trigger" href="#page-top"></a>
+        <!-- <a class="navbar-brand js-scroll-trigger" href="#page-top">rmsfinance.</a> -->
+        <button class="navbar-toggler navbar-toggler-right" type="button" data-toggle="collapse" data-target="#navbarResponsive" aria-controls="navbarResponsive" aria-expanded="false" aria-label="Toggle navigation">
+
+          <i class="fa fa-bars"></i>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarResponsive">
+          <ul class="navbar-nav text-uppercase ml-auto">
+            <li class="nav-item">
+              <a class="nav-link js-scroll-trigger" href="#services">Services</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link js-scroll-trigger" href="#portfolio">Work</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link js-scroll-trigger" href="#about">About</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link js-scroll-trigger" href="#team">Blog</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link js-scroll-trigger" href="#contact">Contact</a>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </nav>
+
+    <!-- Header -->
+
+    <!-- Services -->
+
+    <!-- Work Grid -->
+
+    <!-- About -->
+
+    <!-- Team / Blog-->
+    <section class="content">
+    <div class="inner">
+      <article>
+
+        <p class="crumbs"><span class="crumbsInner"><a href="/">Home</a> <a href="/blog/">Blog</a> PostgreSQL WAL Archiving with WAL-G and S3: Complete Walkthrough</span></p>
+
+        <div class="blog">
+          <figure class="avatar">
+
+            <i class="fa fa-gears"></i>DEV
+
+          </figure>
+          <div class="text">
+            <h1>PostgreSQL WAL Archiving with WAL-G and S3: Complete Walkthrough</h1>
+            <p class="date">Posted by alex on May 15, 2018, 11:34 a.m.</p>
+          </div>
+        </div>
+
+
+
+  <div class="htmlOutput">
+  <h1>PostgreSQL WAL Archiving with WAL-G and S3: Complete Walkthrough</h1>
+<p>Every good database administrator knows the importance of having a rigorous system of backups to protect operational data. The size of the data stored in a database as well as the speed at which the data can change necessitates specialized backup procedures rather than something simple, such as copying files off a filesystem.</p>
+<p>One of these specialized procedures that is supported by Postgres is called WAL archiving. The Postgres <a href="https://www.postgresql.org/docs/9.6/static/wal-intro.html">WAL (Write-Ahead Log)</a> is the location in the Postgres cluster where all changes to the cluster's data files are recorded before they're written to the heap. When recovering from a crash, the WAL contains enough data for Postgres to restore its state to the last committed transaction. <a href="https://www.postgresql.org/docs/9.6/static/continuous-archiving.html">WAL Archiving</a> is simply the process of backing up these WAL files.</p>
+<p>In this article, we are going to go through setting up WAL archiving onto S3 from beginning to end in a development environment.</p>
+<h2>Reasons for WAL Archiving</h2>
+<p>There are three common methods available in Postgres to back up data: <a href="https://www.postgresql.org/docs/9.6/static/backup-dump.html">SQL dumps</a>, <a href="https://www.postgresql.org/docs/9.6/static/backup-file.html">filesystem level backups</a>, and <a href="https://www.postgresql.org/docs/9.6/static/continuous-archiving.html">WAL archiving</a>. It's also possible to make backups using <a href="https://www.postgresql.org/docs/current/static/continuous-archiving.html#BACKUP-BASE-BACKUP"><code>pg_basebackup</code></a> without setting up continuous archiving.</p>
+<p>SQL dumps are fairly easy to set up but they involve duplicating data over and over again. Data usage grows linearly with the frequency of the backup, even if the database is not changing very much between backups. They also take a very long time to create and restore. If you're currently using SQL dump backups, be sure to test their recovery time and decide whether the time that recovery takes is acceptable to you. It's possible for recovery to take hours, days, or even weeks if your database is large enough.</p>
+<p>Filesystem level backups, like SQL dumps, take up a lot of space, but have an additional disadvantage that getting them right can be tricky. An instantaneous snapshot needs to be taken of the entire filesystem. Tools like <code>cp</code> and <code>rsync</code> copy files sequentially and will produce an inconsistent backup from which it is impossible to recover data.</p>
+<p>WAL archiving has two advantages over both these previous methods.</p>
+<p>First, backup sizes do not grow linearly with the frequency of the backup (although each WAL file is exactly 16MB, they can be compressed down to only a few KB if they're mostly empty). Instead, backup size grows with the write activity of the database. This allows backups to be taken much more frequently, with the Postgres documentation suggesting frequencies of once a minute.</p>
+<p>Second, WAL archiving provides the capability for Point-in-Time recovery. Since the WAL is a continuous log of all the changes that happen to the database, it is possible to stop replaying the WAL at an arbitrary point during recovery and restore the database to any point in history that is spanned by the available WAL files.</p>
+<p><a href="https://github.com/wal-g/wal-g">WAL-G</a> is a piece of software that helps to integrate the internal Postgres WAL archiving features with cloud storage providers such as Amazon S3.</p>
+<h2>Disadvantages of WAL Archiving</h2>
+<p>Recovering from WAL archives will be slower than from a filesystem backup. The WAL archives have to be fetched and replayed since the last base backup, whereas a filesystem backup will be ready to go as soon as it replays from the most recent checkpoint (by default, checkpoints are taken at least every 5 minutes, but may happen more frequently on high traffic databases).</p>
+<p>Data loss is still possible as well, since WAL files are only closed and archived at finite intervals. If you archive the WAL every 5 minutes, you can lose 5 minutes of data (potentially more if the server goes down before the previous WAL archive is uploaded).</p>
+<h2>Configuring S3</h2>
+<p>We'll be archiving all of our WALs to an S3 bucket, so the first step is to create that bucket. I'm calling my bucket <code>wal-archive-bucket</code> and I'm putting it in the US East 2 (Ohio) region.</p>
+<p>Next, create a user account with which to access that bucket. In the IAM control panel select "programmatic access", as this user should not need console access. Remember to download the access keys!</p>
+<p>We'll also want to create a custom policy for this user to grant them the necessary permissions. Here's what I used:</p>
+<div class="sourceCode"><pre class="sourceCode json"><code class="sourceCode json"><span class="fu">{</span>
+    <span class="dt">"Version"</span><span class="fu">:</span> <span class="st">"2012-10-17"</span><span class="fu">,</span>
+    <span class="dt">"Statement"</span><span class="fu">:</span> <span class="ot">[</span>
+        <span class="fu">{</span>
+            <span class="dt">"Sid"</span><span class="fu">:</span> <span class="st">"AllowObjectReadWrite"</span><span class="fu">,</span>
+            <span class="dt">"Effect"</span><span class="fu">:</span> <span class="st">"Allow"</span><span class="fu">,</span>
+            <span class="dt">"Action"</span><span class="fu">:</span> <span class="ot">[</span>
+                <span class="st">"s3:PutObject"</span><span class="ot">,</span>
+                <span class="st">"s3:GetObject"</span>
+            <span class="ot">]</span><span class="fu">,</span>
+            <span class="dt">"Resource"</span><span class="fu">:</span> <span class="st">"arn:aws:s3:::wal-archive-bucket/*"</span>
+        <span class="fu">}</span><span class="ot">,</span>
+        <span class="fu">{</span>
+            <span class="dt">"Sid"</span><span class="fu">:</span> <span class="st">"AllowBucketList"</span><span class="fu">,</span>
+            <span class="dt">"Effect"</span><span class="fu">:</span> <span class="st">"Allow"</span><span class="fu">,</span>
+            <span class="dt">"Action"</span><span class="fu">:</span> <span class="ot">[</span>
+                <span class="st">"s3:ListBucket"</span>
+            <span class="ot">]</span><span class="fu">,</span>
+            <span class="dt">"Resource"</span><span class="fu">:</span> <span class="st">"arn:aws:s3:::wal-archive-bucket"</span>
+        <span class="fu">}</span>
+    <span class="ot">]</span>
+<span class="fu">}</span></code></pre></div>
+<h2>Configuring Postgres</h2>
+<p>WAL-G requires some features that were introduced in Postgres 9.6, so make sure your version of Postgres is recent enough.</p>
+<p>For this example we'll be creating a new Postgres cluster to work with, since it's not possible to set up WAL archiving per database. All databases in a cluster write to the same WAL.</p>
+<p>The first step is to find where pg_ctl resides on your system. For me, it's <code>/usr/lib/postgresql/9.6/pg_ctl</code>. I'm going to create a new cluster called <code>new-cluster</code> in my Documents directory.</p>
+<p><code>/usr/lib/postgresql/9.6/bin/pg_ctl init -D  ~/Documents/new-cluster</code></p>
+<p>The next step is to open <code>new-cluster/postgresql.conf</code> and make a few important modifications:</p>
+<ul>
+<li><code>port</code>: I have Postgres running on my system already, so for this second cluster, I'm going to set it to a nonstandard port. I'm using port 6000.</li>
+<li><code>wal_level</code>: By default, Postgres logs a minimal amount of information to the WAL. For WAL archiving, this needs to be set to at least <code>replica</code> (Postgres 10 writes WALs at <code>replica</code> level by default).</li>
+<li><code>archive_mode</code>: Set to <code>on</code> to enable archive mode.</li>
+<li><code>archive_timeout</code>: This variable tells Postgres to rotate WAL files at least this frequently. Generally this should be set to at least 60 seconds, as each WAL file generated will be exactly 16MB (though this can be compressed significantly). If you want to ship logs at a frequency greater than 1 minute, look into running <code>pg_receivexlog</code> on another server.</li>
+</ul>
+<p>Finally, we're ready to start the new cluster. Call <code>postgres</code> with the directory of your cluster and tell it to put the socket and lock file in /tmp, since otherwise it might try to put it in a directory you don't have write permissions to:</p>
+<p><code>/usr/lib/postgresql/9.6/bin/postgres -D ~/Documents/new-cluster/ -k /tmp</code></p>
+<p>Now we can populate the database with data. You'll need to create a database with <code>createdb</code> before you can connect to it via <code>psql</code>. Since we're running Postgres on a unconventional port and with a non-conventional socket location, we need to specify some additional parameters. For both <code>createdb</code> and <code>psql</code> use <code>-h localhost -p 6000</code> to connect over the network (rather than the socket that it won't find, because we've moved it). I'm using Python and a Django app on this database, but you can put whatever data you want here. You could use <code>pg_dump</code> and <code>pg_restore</code> to populate the database with data from any other cluster you have.</p>
+<h2>Configuring WAL-G</h2>
+<p>It's time to get the WAL-G binary. Grab it from <a href="https://github.com/wal-g/wal-g/releases">GitHub</a> and put it somewhere in your PATH.</p>
+<p>Next, tell WAL-G how to authenticate with your IAM user's credentials. Create a file at <code>~/.aws/credentials</code> that looks something like this:</p>
+<pre><code>[default]
+aws_access_key_id = &lt;access key&gt;
+aws_secret_access_key = &lt;secret_key&gt;</code></pre>
+<p>WAL-G also needs to know how to connect to the database. We can do that with Postgres environment parameters (the whole list of possible env parameters can be found <a href="https://www.postgresql.org/docs/9.6/static/libpq-envars.html">here</a>).</p>
+<p>For the backup scripts, I'll use the following parameters:</p>
+<div class="sourceCode"><pre class="sourceCode bash"><code class="sourceCode bash"><span class="bu">export</span> <span class="va">PGHOST=</span>localhost
+<span class="bu">export</span> <span class="va">PGPORT=</span>6000
+<span class="bu">export</span> <span class="va">AWS_REGION=</span>us-east-2
+<span class="bu">export</span> <span class="va">WALE_S3_PREFIX=</span>s3://wal-archive-bucket</code></pre></div>
+<p>We'll use these for our two scripts: the basebackup script and the archive command.</p>
+<p><code>make_basebackup.sh</code>:</p>
+<div class="sourceCode"><pre class="sourceCode bash"><code class="sourceCode bash"><span class="co">#!/bin/bash</span>
+
+<span class="bu">export</span> <span class="va">PGHOST=</span>localhost
+<span class="bu">export</span> <span class="va">PGPORT=</span>6000
+<span class="bu">export</span> <span class="va">AWS_REGION=</span>us-east-2
+<span class="bu">export</span> <span class="va">WALE_S3_PREFIX=</span>s3://walshipping-bucket-test
+
+<span class="ex">wal-g</span> backup-push <span class="va">$1</span></code></pre></div>
+<p><code>archive_command.sh</code>:</p>
+<div class="sourceCode"><pre class="sourceCode bash"><code class="sourceCode bash"><span class="co">#!/bin/bash</span>
+
+<span class="bu">export</span> <span class="va">PGHOST=</span>localhost
+<span class="bu">export</span> <span class="va">PGPORT=</span>6000
+<span class="bu">export</span> <span class="va">AWS_REGION=</span>us-east-2
+<span class="bu">export</span> <span class="va">WALE_S3_PREFIX=</span>s3://walshipping-bucket-test
+
+<span class="ex">wal-g</span> wal-push <span class="va">$1</span></code></pre></div>
+<p>The next step is to change <code>archive_command</code> in <code>postgresql.conf</code> to point to <code>archive_command.sh %p</code>.</p>
+<h2>Make your first base backup</h2>
+<p>It's time to start backing up! If you run <code>make_basebackup.sh ~/Documents/new-cluster/</code>, you should see WAL-G uploading the various files in the cluster to S3. After the backup is complete, Postgres will push the relevant WAL files to S3 as well, using the <code>archive_command</code> we set up earlier.</p>
+<p><strong>IMPORTANT</strong>: pg_basebackup does not take a consistent snapshot of the database. You won't be able to restore with only the base backup, you need the WAL from when the backup started to when the backup ended in order to be able to restore the database to a consistent state.</p>
+<p>Check the S3 bucket for your backup files. You should see two directories in your bucket: <code>basebackups_</code> and <code>wal_</code> ending with a string of numbers.</p>
+<p>Also, if you're running Postgres like I am, you should see its debug output. Each time Postgres finishes writing a WAL file, it will call the archive command to upload it to S3. The output of the archive command looks something like this:</p>
+<pre><code>WAL PATH: wal_005/000000010000000100000005.lz4
+BUCKET: walshipping-bucket-test
+SERVER:</code></pre>
+<h2>Test Restoration</h2>
+<p>Remember that untested backups are not real backups! In production, you want to be testing your backups regularly. We're not in production right now though, so we'll only test the backup we just made.</p>
+<p><code>wal-g backup-fetch</code> will get your base backup from S3 and create a new cluster directory in the location you tell it. You can also pass the path of a specific base backup or <code>LATEST</code> for the latest backup.</p>
+<p><code>wal-g backup-fetch /new/path/to/restored-cluster LATEST</code></p>
+<p>Inside the <code>restored-cluster</code> directory, create a <code>recovery.conf</code> file. This file will tell Postgres where to get the WAL from and how far to play it back. We'll use another script for the <code>restore_command</code>:</p>
+<div class="sourceCode"><pre class="sourceCode bash"><code class="sourceCode bash"><span class="co">#!/bin/bash</span>
+
+<span class="bu">export</span> <span class="va">PGHOST=</span>localhost
+<span class="bu">export</span> <span class="va">PGPORT=</span>6000
+<span class="bu">export</span> <span class="va">AWS_REGION=</span>us-east-2
+<span class="bu">export</span> <span class="va">WALE_S3_PREFIX=</span>s3://walshipping-bucket-test
+
+<span class="ex">wal-g</span> wal-fetch <span class="va">$1</span> <span class="va">$2</span></code></pre></div>
+<p>We'll configure our restore command like so:</p>
+<p><code>restore_command = '/path/to/restore_command.sh %f %p'</code></p>
+<p>It is also possible to configure <code>recovery_target_time</code> or <code>recovery_target_xid</code> to tell the cluster exactly which point to recover to if you do not want to recover to the end of the available WALs.</p>
+<p>Once this new cluster starts, it will use the <code>restore_command</code> to fetch all the necessary WAL files from S3. Depending on how many there are, this could take a while.</p>
+<p>Once the server has finished recovery it will print a message to that effect and begin allowing connections. Connect to the database and verify that all the data that you expect to be there is there.</p>
+<p>Congratulations! You've backed up Postgres! Hopefully this guide provided enough information for you to adapt it to your production environment.</p>
+
+</div>
+
+
+
+      </article>
+      <aside>
+        <div class="contact">
+  <p>
+    Got a comment?<br>Want a quote?<br>Email or call today:
+  </p>
+  <a class="text-button" href="mailto:info@rmsfinance.com" onClick="ga('send', 'event', 'Links', 'Click', 'Info Email');"><span data-hover="&#xf0e0;">info@rmsfinance.com</span></a>
+  <a class="text-button phone-link-anchor" href="tel:4044051240"><span data-hover="&#xf10b;">404.405.1240</span></a>
+  <span class="phone-link-static">404.405.1240</span>
+</div>
+
+        <!--<div>-->
+          <!--Search Blog-->
+        <!--</div>-->
+
+        <!--<div>-->
+          <!--Archives-->
+        <!--</div>-->
+      </aside>
+    </div>
+  </section>
+
+    <!-- Clients -->
+
+    <!-- Contact -->
+
+
+
+
+    <!-- Footer -->
+    <footer>
+      <div class="container">
+        <div class="row">
+          <div class="col-lg-12 text-center">
+
+              <p class="text-muted">3535 Peachtree Road NE, Ste. 520<br />Atlanta, Georgia 30326  <!--</p> -->
+              <!--<p class="text-muted"> -->
+
+                <span>
+                  <br />(404) 405-1240<br />
+                </span>
+                <span>
+                  <a href="mailto:info@rmsfinance.com">info@rmsfinance.com</a>
+                </span>
+              </p>
+
+            </div>
+          </div>
+        <div class="row">
+          <div class="col-md-4">
+            <span class="copyright">&copy;2018 rmsfinance, llc.</span>
+          </div>
+          <div class="col-md-4">
+            <!--
+            <ul class="list-inline social-buttons">
+              <li class="list-inline-item">
+                <a href="#">
+                  <i class="fa fa-twitter"></i>
+                </a>
+              </li>
+
+              <li class="list-inline-item">
+                <a href="#">
+                  <i class="fa fa-github"></i>
+                </a>
+              </li>
+
+              <li class="list-inline-item">
+                <a href="#">
+                  <i class="fa fa-linkedin"></i>
+                </a>
+              </li>
+            </ul>
+            -->
+          </div>
+          <div class="col-md-4">
+            <ul class="list-inline quicklinks">
+              <li class="list-inline-item">
+                <a href="#">Privacy Policy</a>
+              </li>
+              <li class="list-inline-item">
+                <a href="#">Terms of Use</a>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </footer>
+
+    <!-- Portfolio Modals -->
+
+    <!-- Modal 1  to Modal 6-->
+
+
+
+    <!-- Bootstrap core JavaScript -->
+    <script src="vendor/jquery/jquery.min.js"></script>
+    <script src="vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+
+    <!-- Plugin JavaScript -->
+    <script src="vendor/jquery-easing/jquery.easing.min.js"></script>
+
+    <!-- Contact form JavaScript -->
+    <script src="js/jqBootstrapValidation.js"></script>
+    <script src="js/contact_me.js"></script>
+
+    <!-- Custom scripts for this template -->
+    <script src="js/agency.min.js"></script>
+
+
+  </body>
+
+</html>
